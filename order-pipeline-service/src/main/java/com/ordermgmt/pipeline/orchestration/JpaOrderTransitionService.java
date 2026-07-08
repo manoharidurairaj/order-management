@@ -14,12 +14,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+
+import static com.ordermgmt.common.domain.OrderState.*;
 
 @Component
 public class JpaOrderTransitionService implements OrderTransitionService {
 
     private static final Logger log = LoggerFactory.getLogger(JpaOrderTransitionService.class);
+
+    private static final List<OrderState> NON_TERMINAL_STATES =
+            List.of(PLACED, CONFIRMED, PREPARING, READY, OUT_FOR_DELIVERY);
 
     private final OrderRepository orderRepository;
     private final OrderHistoryRepository orderHistoryRepository;
@@ -84,6 +90,14 @@ public class JpaOrderTransitionService implements OrderTransitionService {
         recordHistory(orderId, from, to);
         log.info("orderId={} state {} -> {}", orderId, from, to);
         return true;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StaleOrder> findStaleNonTerminal(Instant olderThan) {
+        return orderRepository.findByStateInAndUpdatedAtBefore(NON_TERMINAL_STATES, olderThan).stream()
+                .map(order -> new StaleOrder(order.getId(), order.getState()))
+                .toList();
     }
 
     private void recordHistory(String orderId, OrderState from, OrderState to) {

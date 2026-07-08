@@ -45,6 +45,15 @@ ordermgmt:
     delivery-delay:
       min-ms: 2000
       max-ms: 6000
+    reconciliation:
+      # Backstop for orders neither Kafka redelivery nor the in-memory
+      # delivery scheduler will ever revisit on their own (e.g. a process
+      # killed right after scheduling OUT_FOR_DELIVERY -> DELIVERED, which
+      # only exists as an in-memory timer). stale-after-ms should stay well
+      # above delivery-delay.max-ms so orders progressing normally are
+      # never mistaken for stuck ones.
+      stale-after-ms: 15000
+      interval-ms: 10000
 
 resilience4j:
   retry:

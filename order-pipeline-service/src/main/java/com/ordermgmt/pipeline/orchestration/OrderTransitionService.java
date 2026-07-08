@@ -2,6 +2,8 @@ package com.ordermgmt.pipeline.orchestration;
 
 import com.ordermgmt.common.domain.OrderState;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -28,4 +30,12 @@ public interface OrderTransitionService {
      * is the idempotency boundary against Kafka redelivery.
      */
     boolean applyTransition(String orderId, OrderState from, OrderState to);
+
+    /**
+     * Orders in a non-terminal state that haven't been updated since
+     * before {@code olderThan} — candidates for the reconciliation sweep
+     * to resume, since neither Kafka redelivery nor the in-memory delivery
+     * scheduler is guaranteed to ever revisit them after a crash.
+     */
+    List<StaleOrder> findStaleNonTerminal(Instant olderThan);
 }

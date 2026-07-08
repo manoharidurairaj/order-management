@@ -10,6 +10,13 @@
 # (infra/docker-compose.yml, built from local source) or from the repo
 # root (docker-compose.yml, pulled from Docker Hub) — no detection needed.
 #
+# Uses the explicit `docker compose -f ... -p ...` form throughout rather
+# than the bare `docker-compose` shim — the shim's implicit CWD-based
+# project detection was observed to silently find zero containers under
+# Git Bash on Windows (empty `docker-compose ps` despite containers
+# clearly running with correct labels), while the explicit form is
+# reliable regardless of shell/path-translation quirks.
+#
 # See README.md > "Resetting for a fresh demo" for what each step does and why.
 #
 # Usage:
@@ -19,6 +26,8 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
+
+COMPOSE=(docker compose -f docker-compose.yml -p order-management)
 
 WITH_LOAD=false
 if [[ "${1:-}" == "--with-load" ]]; then
@@ -31,7 +40,7 @@ step "Stopping load generator"
 curl -s -X POST http://localhost:8085/load/stop || echo "  (load generator not reachable — already stopped?)"
 
 step "Stopping app services (order-ingestion-service, order-pipeline-service, dashboard-service, load-generator)"
-docker-compose stop order-ingestion-service order-pipeline-service dashboard-service load-generator
+"${COMPOSE[@]}" stop order-ingestion-service order-pipeline-service dashboard-service load-generator
 
 step "Deleting Kafka topics (orders.lifecycle, orders.dlq)"
 docker exec order-management-kafka kafka-topics --delete --topic orders.lifecycle --bootstrap-server kafka:9092 || echo "  (orders.lifecycle already gone)"
@@ -48,11 +57,11 @@ step "Flushing Redis (idempotency keys)"
 docker exec order-management-redis redis-cli FLUSHALL
 
 step "Restarting app services"
-docker-compose start order-ingestion-service order-pipeline-service dashboard-service
+"${COMPOSE[@]}" start order-ingestion-service order-pipeline-service dashboard-service
 
 if $WITH_LOAD; then
   step "Restarting load generator"
-  docker-compose start load-generator
+  "${COMPOSE[@]}" start load-generator
 else
   step "Load generator left stopped (pass --with-load to also start it)"
 fi

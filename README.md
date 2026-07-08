@@ -320,8 +320,28 @@ only one and assumes "idempotency is handled" will miss the other:
    incoming message expects. A stale or repeated message finds the state
    has already moved on (or the version has already been bumped) and is
    logged and skipped — never blindly reapplied.
+3. **The process is killed mid-flight and nothing ever comes back to finish
+   the order.** The two mechanisms above both assume *something* eventually
+   re-triggers processing — a retried client call, a redelivered Kafka
+   message. But two specific gaps mean that assumption doesn't always hold:
+   a crash between two of the orchestrator's own synchronous transitions
+   can leave an order sitting in an intermediate state (`Preparing`,
+   `Ready`) with its Kafka offset already past the point that would ever
+   redeliver it; and the final `Out for Delivery -> Delivered` step is
+   scheduled as a plain in-memory delayed timer (see [Trade-offs](#trade-offs--what-we-chose-not-to-build-and-why)
+   below on why it isn't a database-backed job) — if the process dies
+   before that timer fires, the timer is simply gone, with nothing left
+   to ever complete that order. `order-pipeline-service` runs a small
+   periodic sweep (`DefaultOrderOrchestrator.reconcileStaleOrders`,
+   every 10s by default) that finds orders sitting in any non-terminal
+   state for longer than expected (15s by default — comfortably past the
+   normal few-hundred-millisecond-to-6-second lifecycle) and resumes each
+   one from exactly where it stopped. It reuses the same transition logic
+   as the main path, so it's safe even if it occasionally fires on an
+   order that's actually still progressing normally (the optimistic-lock
+   check above makes that a no-op, not a conflict).
 
-A third, smaller discipline worth naming: **every message for a given order
+A fourth, smaller discipline worth naming: **every message for a given order
 is published with that order's id as the Kafka partition key** — including
 `OrderFailedEvent` on the DLQ topic, not just the main lifecycle events.
 This is what guarantees a single order's events are always processed in the
@@ -384,6 +404,18 @@ Every one of these is a conscious decision, documented here so it reads as
   integrations.** This project is about the order-lifecycle plumbing —
   intake, sequencing, resilience, observability — not a full commerce
   platform.
+- **The final `Out for Delivery -> Delivered` step is a plain in-memory
+  delayed timer** (`TaskScheduler.schedule`), not a database-backed job —
+  simpler to build and read for a project at this scale, at the cost of
+  that specific timer being lost if the process dies before it fires (a
+  database-backed delayed-job table, or re-deriving the due time from a
+  persisted timestamp on every restart, would close this fully but wasn't
+  justified for a demo). The gap is covered, not left open: the periodic
+  reconciliation sweep described in
+  [How correctness is guaranteed under failure](#how-correctness-is-guaranteed-under-failure)
+  finds any order that's been sitting non-terminal for too long — this
+  case included — and resumes it, so the order still completes, just up
+  to ~15s later than it otherwise would have.
 
 ## What's next — further enhancements & extendable features
 

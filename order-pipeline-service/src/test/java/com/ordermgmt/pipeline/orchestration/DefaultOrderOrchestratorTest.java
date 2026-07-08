@@ -37,7 +37,7 @@ class DefaultOrderOrchestratorTest {
         eventPublisher = mock(PipelineEventPublisher.class);
         taskScheduler = mock(TaskScheduler.class);
         orchestrator = new DefaultOrderOrchestrator(
-                transitions, restaurantClient, courierClient, eventPublisher, taskScheduler, 10, 20);
+                transitions, restaurantClient, courierClient, eventPublisher, taskScheduler, 10, 20, 15000);
 
         // Every transition succeeds by default; individual tests override.
         when(transitions.createPlaced(any(), any(), any())).thenReturn(true);
@@ -69,13 +69,61 @@ class DefaultOrderOrchestratorTest {
     }
 
     @Test
-    void duplicatePlacedEventIsANoOpAfterCreateFails() {
+    void duplicatePlacedEventForATerminalOrderIsANoOp() {
         when(transitions.createPlaced(any(), any(), any())).thenReturn(false);
+        when(transitions.currentState("order-1")).thenReturn(Optional.of(DELIVERED));
 
         orchestrator.handlePlaced(placedEvent("order-1"));
 
         verifyNoInteractions(restaurantClient, courierClient, taskScheduler);
         verify(transitions, never()).applyTransition(any(), any(), any());
+    }
+
+    @Test
+    void duplicatePlacedEventForAnOrderStillMidFlightResumesFromCurrentState() {
+        // Simulates a crash between CONFIRMED -> PREPARING and the next
+        // step last time: createPlaced fails (order already exists) but
+        // the order is still sitting in a non-terminal state, so redelivery
+        // of the same OrderPlacedEvent should pick up where it left off
+        // instead of being silently dropped.
+        when(transitions.createPlaced(any(), any(), any())).thenReturn(false);
+        when(transitions.currentState("order-1")).thenReturn(Optional.of(PREPARING));
+
+        orchestrator.handlePlaced(placedEvent("order-1"));
+
+        verify(transitions, never()).applyTransition("order-1", PLACED, CONFIRMED);
+        verify(transitions, never()).applyTransition("order-1", CONFIRMED, PREPARING);
+        verify(restaurantClient).prepareOrder("order-1");
+        verify(transitions).applyTransition("order-1", PREPARING, READY);
+        verify(courierClient).dispatchOrder("order-1");
+        verify(transitions).applyTransition("order-1", READY, OUT_FOR_DELIVERY);
+        verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+    }
+
+    @Test
+    void reconciliationResumesEachStaleOrderFromItsOwnState() {
+        when(transitions.findStaleNonTerminal(any())).thenReturn(List.of(
+                new StaleOrder("stuck-preparing", PREPARING),
+                new StaleOrder("stuck-out-for-delivery", OUT_FOR_DELIVERY)));
+
+        orchestrator.reconcileStaleOrders();
+
+        verify(restaurantClient).prepareOrder("stuck-preparing");
+        verify(transitions).applyTransition("stuck-preparing", PREPARING, READY);
+        verify(courierClient).dispatchOrder("stuck-preparing");
+        verify(transitions).applyTransition("stuck-preparing", READY, OUT_FOR_DELIVERY);
+
+        verify(courierClient, never()).dispatchOrder("stuck-out-for-delivery");
+        verify(taskScheduler, times(2)).schedule(any(Runnable.class), any(Instant.class));
+    }
+
+    @Test
+    void reconciliationWithNoStaleOrdersDoesNothing() {
+        when(transitions.findStaleNonTerminal(any())).thenReturn(List.of());
+
+        orchestrator.reconcileStaleOrders();
+
+        verifyNoInteractions(restaurantClient, courierClient, taskScheduler);
     }
 
     @Test
