@@ -482,10 +482,11 @@ This uses the same host ports as `infra/docker-compose.yml`
 (8081–8085, 3306, 6379, 9092/29092, 9090, 3000), so **run one or the
 other, not both** — stop whichever stack is currently up first
 (`docker compose down` / `docker-compose down`, from whichever
-directory it was started in). Containers here are named
-`order-management-*` rather than `ordermgmt-*`, and the Compose project
-name is `order-management`, so the two files' resources don't collide on
-disk — just at the port level while both are running.
+directory it was started in). Both files deliberately use the same
+Compose project name (`order-management`) and the same container names
+(`order-management-*`) — so `reset-demo.sh` and any other tooling that
+targets those container names works identically no matter which of the
+two you used to bring the stack up.
 
 ## Where to look
 
@@ -656,18 +657,18 @@ docker-compose stop order-ingestion-service order-pipeline-service dashboard-ser
 # 3. Delete the Kafka topics — this clears out any backlog. They're
 #    auto-created again (with the configured 6 partitions) the moment a
 #    producer/consumer touches them once the services below restart.
-docker exec ordermgmt-kafka kafka-topics --delete --topic orders.lifecycle --bootstrap-server kafka:9092
-docker exec ordermgmt-kafka kafka-topics --delete --topic orders.dlq --bootstrap-server kafka:9092
+docker exec order-management-kafka kafka-topics --delete --topic orders.lifecycle --bootstrap-server kafka:9092
+docker exec order-management-kafka kafka-topics --delete --topic orders.dlq --bootstrap-server kafka:9092
 
 # 4. Delete the now-stale consumer group offsets
-docker exec ordermgmt-kafka kafka-consumer-groups --delete --group order-pipeline-service --bootstrap-server kafka:9092
-docker exec ordermgmt-kafka kafka-consumer-groups --delete --group dashboard-service --bootstrap-server kafka:9092
+docker exec order-management-kafka kafka-consumer-groups --delete --group order-pipeline-service --bootstrap-server kafka:9092
+docker exec order-management-kafka kafka-consumer-groups --delete --group dashboard-service --bootstrap-server kafka:9092
 
 # 5. Clear MySQL — orders and their history
-docker exec ordermgmt-mysql mysql -uordermgmt -pordermgmt orders -e "TRUNCATE TABLE order_history; TRUNCATE TABLE orders;"
+docker exec order-management-mysql mysql -uordermgmt -pordermgmt orders -e "TRUNCATE TABLE order_history; TRUNCATE TABLE orders;"
 
 # 6. Clear Redis — used idempotency keys (Redis is dedicated to this system, safe to flush)
-docker exec ordermgmt-redis redis-cli FLUSHALL
+docker exec order-management-redis redis-cli FLUSHALL
 
 # 7. Bring the app services back up
 docker-compose start order-ingestion-service order-pipeline-service dashboard-service

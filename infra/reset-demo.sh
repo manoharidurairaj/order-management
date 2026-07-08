@@ -4,6 +4,12 @@
 # flushes Redis's idempotency keys. Infra containers (kafka, mysql, redis,
 # prometheus, grafana) are left running throughout.
 #
+# Container names here match the root-level docker-compose.yml exactly
+# (both use the "order-management" project name and container prefix), so
+# this script works the same whether the stack was started from here
+# (infra/docker-compose.yml, built from local source) or from the repo
+# root (docker-compose.yml, pulled from Docker Hub) — no detection needed.
+#
 # See README.md > "Resetting for a fresh demo" for what each step does and why.
 #
 # Usage:
@@ -28,18 +34,18 @@ step "Stopping app services (order-ingestion-service, order-pipeline-service, da
 docker-compose stop order-ingestion-service order-pipeline-service dashboard-service load-generator
 
 step "Deleting Kafka topics (orders.lifecycle, orders.dlq)"
-docker exec ordermgmt-kafka kafka-topics --delete --topic orders.lifecycle --bootstrap-server kafka:9092 || echo "  (orders.lifecycle already gone)"
-docker exec ordermgmt-kafka kafka-topics --delete --topic orders.dlq --bootstrap-server kafka:9092 || echo "  (orders.dlq already gone)"
+docker exec order-management-kafka kafka-topics --delete --topic orders.lifecycle --bootstrap-server kafka:9092 || echo "  (orders.lifecycle already gone)"
+docker exec order-management-kafka kafka-topics --delete --topic orders.dlq --bootstrap-server kafka:9092 || echo "  (orders.dlq already gone)"
 
 step "Deleting stale consumer group offsets"
-docker exec ordermgmt-kafka kafka-consumer-groups --delete --group order-pipeline-service --bootstrap-server kafka:9092 || echo "  (order-pipeline-service group already gone)"
-docker exec ordermgmt-kafka kafka-consumer-groups --delete --group dashboard-service --bootstrap-server kafka:9092 || echo "  (dashboard-service group already gone)"
+docker exec order-management-kafka kafka-consumer-groups --delete --group order-pipeline-service --bootstrap-server kafka:9092 || echo "  (order-pipeline-service group already gone)"
+docker exec order-management-kafka kafka-consumer-groups --delete --group dashboard-service --bootstrap-server kafka:9092 || echo "  (dashboard-service group already gone)"
 
 step "Truncating MySQL orders / order_history"
-docker exec ordermgmt-mysql mysql -uordermgmt -pordermgmt orders -e "TRUNCATE TABLE order_history; TRUNCATE TABLE orders;"
+docker exec order-management-mysql mysql -uordermgmt -pordermgmt orders -e "TRUNCATE TABLE order_history; TRUNCATE TABLE orders;"
 
 step "Flushing Redis (idempotency keys)"
-docker exec ordermgmt-redis redis-cli FLUSHALL
+docker exec order-management-redis redis-cli FLUSHALL
 
 step "Restarting app services"
 docker-compose start order-ingestion-service order-pipeline-service dashboard-service

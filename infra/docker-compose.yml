@@ -6,7 +6,7 @@
 services:
   mysql:
     image: mysql:8.0
-    container_name: ordermgmt-mysql
+    container_name: order-management-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: root
@@ -26,7 +26,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ordermgmt-redis
+    container_name: order-management-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -38,7 +38,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
-    container_name: ordermgmt-kafka
+    container_name: order-management-kafka
     restart: unless-stopped
     ports:
       - "9092:9092"
@@ -68,7 +68,7 @@ services:
 
   prometheus:
     image: prom/prometheus:v2.53.0
-    container_name: ordermgmt-prometheus
+    container_name: order-management-prometheus
     restart: unless-stopped
     ports:
       - "9090:9090"
@@ -77,7 +77,7 @@ services:
 
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: ordermgmt-grafana
+    container_name: order-management-grafana
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -99,7 +99,8 @@ services:
   downstream-simulators:
     build:
       context: ../downstream-simulators
-    container_name: ordermgmt-downstream-simulators
+    image: order-management-local/downstream-simulators:latest
+    container_name: order-management-downstream-simulators
     restart: unless-stopped
     ports:
       - "8082:8082"
@@ -112,7 +113,8 @@ services:
   order-ingestion-service:
     build:
       context: ../order-ingestion-service
-    container_name: ordermgmt-order-ingestion-service
+    image: order-management-local/order-ingestion-service:latest
+    container_name: order-management-order-ingestion-service
     restart: unless-stopped
     ports:
       - "8081:8081"
@@ -134,7 +136,8 @@ services:
   order-pipeline-service:
     build:
       context: ../order-pipeline-service
-    container_name: ordermgmt-order-pipeline-service
+    image: order-management-local/order-pipeline-service:latest
+    container_name: order-management-order-pipeline-service
     restart: unless-stopped
     ports:
       - "8083:8083"
@@ -161,7 +164,8 @@ services:
   dashboard-service:
     build:
       context: ../dashboard-service
-    container_name: ordermgmt-dashboard-service
+    image: order-management-local/dashboard-service:latest
+    container_name: order-management-dashboard-service
     restart: unless-stopped
     ports:
       - "8084:8084"
@@ -180,7 +184,8 @@ services:
   load-generator:
     build:
       context: ../load-generator
-    container_name: ordermgmt-load-generator
+    image: order-management-local/load-generator:latest
+    container_name: order-management-load-generator
     restart: unless-stopped
     ports:
       - "8085:8085"
