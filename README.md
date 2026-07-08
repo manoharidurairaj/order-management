@@ -18,6 +18,7 @@ rationale, and how to run it.
 - [What's next — further enhancements & extendable features](#whats-next--further-enhancements--extendable-features)
 - [Prerequisites](#prerequisites)
 - [Run it](#run-it)
+- [Run it without build](#run-it-without-building--pull-prebuilt-images-from-Docker-Hub)
 - [Where to look](#where-to-look)
 - [Causing a dinner rush on demand](#causing-a-dinner-rush-on-demand)
 - [Inducing visible failures on purpose](#inducing-visible-failures-on-purpose)
@@ -462,6 +463,29 @@ Tear down:
 ```bash
 docker-compose down -v   # -v also drops the mysql/kafka data volumes
 ```
+
+## Run it without building — pull prebuilt images from Docker Hub
+
+If you just want the system running (no JDK, no source checkout of the
+app modules, no `./gradlew build`), a second compose file at the repo
+root — `docker-compose.yml` — pulls all five application images prebuilt
+from Docker Hub (`manoharidurairaj/*`) instead of building them locally.
+Backing infra (MySQL/Redis/Kafka/Prometheus/Grafana) is identical either
+way, since those already come from public upstream images.
+
+```bash
+# From the repo root — no ./gradlew build needed first
+docker compose up -d
+```
+
+This uses the same host ports as `infra/docker-compose.yml`
+(8081–8085, 3306, 6379, 9092/29092, 9090, 3000), so **run one or the
+other, not both** — stop whichever stack is currently up first
+(`docker compose down` / `docker-compose down`, from whichever
+directory it was started in). Containers here are named
+`order-management-*` rather than `ordermgmt-*`, and the Compose project
+name is `order-management`, so the two files' resources don't collide on
+disk — just at the port level while both are running.
 
 ## Where to look
 
