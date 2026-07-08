@@ -1,0 +1,33 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: downstream-simulators
+
+chaos:
+  latency:
+    probability: ${CHAOS_LATENCY_PROBABILITY:0.20}
+    min-ms: ${CHAOS_LATENCY_MIN_MS:3000}
+    max-ms: ${CHAOS_LATENCY_MAX_MS:5000}
+  rate503: ${CHAOS_RATE_503:0}
+  rate429: ${CHAOS_RATE_429:0}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] [orderId=%X{orderId}] %logger{36} - %msg%n"

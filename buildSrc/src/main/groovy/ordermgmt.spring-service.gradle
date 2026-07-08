@@ -1,0 +1,43 @@
+// Convention plugin shared by every deployable Spring Boot service module.
+// Centralizing this here is the DRY boundary: bump the Boot version or add a
+// baseline dependency once, and every service picks it up — no four
+// copy-pasted build.gradle files drifting out of sync.
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.8'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:1.19.8"
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

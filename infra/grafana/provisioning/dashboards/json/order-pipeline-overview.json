@@ -1,0 +1,125 @@
+{
+  "title": "Order Pipeline — System Health",
+  "uid": "order-pipeline-overview",
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Services up",
+      "type": "table",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{
+        "expr": "up{job=~\"order-ingestion-service|downstream-simulators|order-pipeline-service|dashboard-service|load-generator\"}",
+        "legendFormat": "{{job}}",
+        "format": "table",
+        "instant": true
+      }],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true, "__name__": true, "instance": true },
+            "renameByName": { "job": "Service", "Value": "Status" },
+            "indexByName": { "job": 0, "Value": 1 }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" } } },
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green" } } }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Status" },
+            "properties": [
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "custom.align", "value": "center" }
+            ]
+          }
+        ]
+      },
+      "options": { "showHeader": true }
+    },
+    {
+      "id": 2,
+      "title": "HTTP request rate by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count[1m])) by (application)", "legendFormat": "{{application}}" }]
+    },
+    {
+      "id": 3,
+      "title": "HTTP 5xx rate by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [{ "expr": "sum(rate(http_server_requests_seconds_count{status=~\"5..\"}[1m])) by (application)", "legendFormat": "{{application}}" }]
+    },
+    {
+      "id": 4,
+      "title": "HTTP p99 latency by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [{ "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket[1m])) by (le, application))", "legendFormat": "{{application}}" }]
+    },
+    {
+      "id": 5,
+      "title": "Circuit breaker state (0=closed, 1=open, 2=half-open)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [{ "expr": "resilience4j_circuitbreaker_state{state=\"open\"}", "legendFormat": "{{name}} open" }]
+    },
+    {
+      "id": 6,
+      "title": "Retry call outcomes (restaurant/courier)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" } },
+      "targets": [{ "expr": "sum(rate(resilience4j_retry_calls_total[1m])) by (name, kind)", "legendFormat": "{{name}}-{{kind}}" }]
+    },
+    {
+      "id": 7,
+      "title": "Bulkhead available concurrent calls",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [{ "expr": "resilience4j_bulkhead_available_concurrent_calls", "legendFormat": "{{name}}" }]
+    },
+    {
+      "id": 8,
+      "title": "JVM heap used by service",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [{ "expr": "sum(jvm_memory_used_bytes{area=\"heap\"}) by (application)", "legendFormat": "{{application}}" }]
+    },
+    {
+      "id": 9,
+      "title": "Load generator: accepted vs duplicate-rejected vs errors",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ops" } },
+      "targets": [{ "expr": "sum(rate(loadgen_orders_accepted_total[1m]))", "legendFormat": "accepted" },
+                  { "expr": "sum(rate(loadgen_orders_duplicate_rejected_total[1m]))", "legendFormat": "duplicate (409)" },
+                  { "expr": "sum(rate(loadgen_orders_errors_total[1m]))", "legendFormat": "errors" }]
+    }
+  ]
+}

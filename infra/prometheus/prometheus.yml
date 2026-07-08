@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # Targets use docker-compose service names — prometheus runs as a
+  # container on the same compose network as the app services, so this
+  # relies on compose's built-in service-name DNS rather than
+  # host.docker.internal (which only makes sense when the app processes run
+  # on the host instead of in containers).
+  - job_name: 'order-ingestion-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['order-ingestion-service:8081']
+
+  - job_name: 'downstream-simulators'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['downstream-simulators:8082']
+
+  - job_name: 'order-pipeline-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['order-pipeline-service:8083']
+
+  - job_name: 'dashboard-service'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['dashboard-service:8084']
+
+  - job_name: 'load-generator'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['load-generator:8085']

@@ -1,0 +1,45 @@
+### IntelliJ IDEA ###
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.kotlin
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+/.claude/
+/.gradle/
+/.idea/
+/common-domain/build/
+/dashboard-service/build/
+/downstream-simulators/build/
+/load-generator/build/
+/order-ingestion-service/build/
+/order-pipeline-service/build/
+/order-management.iml
+/order-management-implementation-plan.md
+/project-requirements.txt
+/SESSION-NOTES.md
+/buildSrc/build/
+/buildSrc/.gradle/

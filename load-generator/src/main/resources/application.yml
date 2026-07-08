@@ -1,0 +1,32 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: load-generator
+
+ordermgmt:
+  ingestion:
+    base-url: ${INGESTION_BASE_URL:http://localhost:8081}
+  load:
+    baseline-rate: ${LOAD_BASELINE_RATE:2.0}
+    dispatch-threads: 16
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

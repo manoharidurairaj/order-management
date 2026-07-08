@@ -1,0 +1,8 @@
+rootProject.name = 'order-management'
+
+include 'common-domain'
+include 'order-ingestion-service'
+include 'downstream-simulators'
+include 'order-pipeline-service'
+include 'dashboard-service'
+include 'load-generator'
