@@ -3,6 +3,8 @@
 # application service. Phase 0 wires only the backing infra so it can be
 # validated in isolation before any app code depends on it.
 
+name: order-management
+
 services:
   mysql:
     image: mysql:8.0

@@ -674,6 +674,20 @@ cd infra
 ./reset-demo.sh --with-load  # reset, then also restart the load generator
 ```
 
+> **Windows PowerShell / IntelliJ terminal users:** running `./reset-demo.sh`
+> or any of the `demo-*.sh` scripts directly launches them through the `.sh`
+> file association, which opens Git Bash in a brand-new window instead of
+> running in your current console. Invoke Git Bash explicitly instead so it
+> stays attached to the terminal you're already in — plain `bash` isn't
+> reliable either, since if WSL is installed `C:\WINDOWS\system32\bash.exe`
+> can shadow it on `PATH`:
+>
+> ```powershell
+> cd infra
+> & "C:\Program Files\Git\bin\bash.exe" ./reset-demo.sh
+> & "C:\Program Files\Git\bin\bash.exe" ./demo-1-happy-path.sh
+> ```
+
 Or, if you'd rather run the steps by hand (also what the script itself does):
 
 ```bash
